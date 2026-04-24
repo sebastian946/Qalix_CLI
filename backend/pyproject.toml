@@ -29,3 +29,34 @@ dev = [
     "ruff",
     "mypy"
 ]
+
+[tool.ruff]
+line-length = 88
+target-version = "py312"
+exclude = [".venv", "alembic"]
+
+[tool.ruff.lint]
+select = [
+    "E",     # style errors (pycodestyle)
+    "F",     # logical errors (pyflakes)
+    "I",     # import ordering (isort)
+    "UP",    # modernize syntax for Python 3.12 (pyupgrade)
+    "B",     # common bugs (flake8-bugbear)
+    "ASYNC", # async/await best practices
+    "N",     # PEP8 naming conventions
+]
+ignore = [
+    "E501",  # line too long (handled by ruff format)
+    "B008",  # do not call functions in default arguments (required for FastAPI Depends)
+]
+
+[tool.ruff.lint.per-file-ignores]
+"test/*" = ["F811"]  # allows redefining fixtures in tests
+
+[tool.ruff.lint.isort]
+known-first-party = ["api", "agents", "chains", "core", "models", "schemas", "services"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
