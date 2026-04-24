@@ -1,0 +1,31 @@
+[project]
+name = "backend"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi",
+    "uvicorn[standard]",
+    "pydantic",
+    "pydantic-settings",
+    "sqlalchemy",
+    "alembic",
+    "asyncpg",
+    "langchain",
+    "langchain-anthropic",
+    "langgraph",
+    "chromadb",
+    "anthropic",
+    "python-dotenv",
+    "redis"
+]
+[dependency-groups]
+dev = [
+    "pytest",
+    "pytest-asyncio",
+    "pytest-cov",
+    "httpx",
+    "ruff",
+    "mypy"
+]
