@@ -100,3 +100,14 @@ uv run pytest test/unit                # unit tests only
 uv run pytest test/integration         # integration tests only
 uv run pytest --cov=. --cov-report=html  # with coverage report
 ```
+
+#### Pytest Configuration (`pyproject.toml`)
+
+```toml
+[tool.pytest.ini_options]
+addopts    = "-ra -q --cov=."   # coverage measured from backend/ root
+testpaths  = ["test"]
+pythonpath = ["."]              # allows importing main.py and all packages directly
+```
+
+> **Note:** `pythonpath = ["."]` is required because the source code lives in `backend/` root (no `src/` layout). Without it, pytest cannot resolve imports like `from main import app`.
