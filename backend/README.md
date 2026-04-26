@@ -8,16 +8,16 @@ Qalix helps teams generate, execute, and maintain test suites using AI agents, r
 
 ## Tech Stack
 
-| Layer | Technology |
-|---|---|
-| API | FastAPI + Uvicorn |
-| Database | PostgreSQL (async via asyncpg + SQLAlchemy) |
-| Migrations | Alembic |
-| AI Agents | LangGraph + LangChain |
-| LLM | Anthropic Claude (langchain-anthropic) |
-| Vector DB | ChromaDB |
-| Cache | Redis |
-| Validation | Pydantic + pydantic-settings |
+| Layer      | Technology                                  |
+| ---------- | ------------------------------------------- |
+| API        | FastAPI + Uvicorn                           |
+| Database   | PostgreSQL (async via asyncpg + SQLAlchemy) |
+| Migrations | Alembic                                     |
+| AI Agents  | LangGraph + LangChain                       |
+| LLM        | Anthropic Claude (langchain-anthropic)      |
+| Vector DB  | ChromaDB                                    |
+| Cache      | Redis                                       |
+| Validation | Pydantic + pydantic-settings                |
 
 ---
 
@@ -25,19 +25,23 @@ Qalix helps teams generate, execute, and maintain test suites using AI agents, r
 
 ```
 backend/
-├── api/          # HTTP endpoints and routers (FastAPI)
-├── agents/       # AI agents built with LangGraph
-├── chains/       # LangChain pipelines and prompt chains
-├── core/         # Central config, settings, and DB connection
-├── models/       # SQLAlchemy database models
-├── schemas/      # Pydantic schemas for request/response validation
-├── services/     # Business logic layer
+├── api/          # HTTP endpoints and routers (FastAPI) — pending
+├── agents/       # AI agents built with LangGraph — pending
+├── chains/       # LangChain pipelines and prompt chains — pending
+├── core/
+│   └── config.py # App settings via pydantic-settings (.env)
+├── models/       # SQLAlchemy database models — pending
+├── routes/       # Route registration — pending
+├── schemas/      # Pydantic schemas for request/response validation — pending
+├── services/     # Business logic layer — pending
 ├── alembic/      # Database migrations
 ├── test/
 │   ├── unit/
 │   ├── integration/
 │   └── e2e/
-└── main.py       # Application entry point
+├── docker-compose.yaml  # PostgreSQL service
+├── pyproject.toml
+└── main.py       # Application entry point (FastAPI app factory + /health)
 ```
 
 ---
@@ -48,8 +52,7 @@ backend/
 
 - Python 3.12+
 - [uv](https://docs.astral.sh/uv/) (package manager)
-- PostgreSQL
-- Redis
+- Docker (for PostgreSQL via docker-compose)
 
 ### Installation
 
@@ -59,16 +62,58 @@ uv sync --all-groups
 
 ### Environment Variables
 
-Copy `.env.example` to `.env` and fill in the values:
+The `.env` file is already present. Update the values before running:
+
+```env
+ANTHROPIC_API_KEY=your_anthropic_api_key_here
+DATABASE_URL=your_database_url_here
+REDIS_URL=your_redis_url_here
+ENVIRONMENT=DEV
+```
+
+Settings are loaded via `core/config.py` using `pydantic-settings`. Access them like:
+
+```python
+from core.config import Settings
+
+settings = Settings()
+print(settings.ANTHROPIC_API_KEY)
+```
+
+### Start the Database
 
 ```bash
-cp .env.example .env
+docker compose up -d
 ```
+
+This starts PostgreSQL on `localhost:5432`:
+- User: `user123`
+- Password: `password123`
+- DB: `my_database`
 
 ### Run the Server
 
 ```bash
-uv run uvicorn main:app --reload
+uv run uvicorn main:app --reload --port 8000
+```
+
+The server starts on `http://localhost:8000`.
+
+---
+
+## Available Endpoints
+
+| Method | Path      | Description        |
+| ------ | --------- | ------------------ |
+| GET    | `/health` | Health check       |
+| GET    | `/docs`   | Swagger UI         |
+| GET    | `/redoc`  | ReDoc              |
+
+Verify the server is running:
+
+```bash
+curl http://localhost:8000/health
+# {"status": "ok"}
 ```
 
 ---
@@ -95,9 +140,9 @@ uv run alembic downgrade -1                              # rollback one step
 ### Tests
 
 ```bash
-uv run pytest                          # run all tests
-uv run pytest test/unit                # unit tests only
-uv run pytest test/integration         # integration tests only
+uv run pytest                            # run all tests
+uv run pytest test/unit                  # unit tests only
+uv run pytest test/integration           # integration tests only
 uv run pytest --cov=. --cov-report=html  # with coverage report
 ```
 
@@ -105,9 +150,9 @@ uv run pytest --cov=. --cov-report=html  # with coverage report
 
 ```toml
 [tool.pytest.ini_options]
-addopts    = "-ra -q --cov=."   # coverage measured from backend/ root
+addopts    = "-ra -q --cov=."
 testpaths  = ["test"]
-pythonpath = ["."]              # allows importing main.py and all packages directly
+pythonpath = ["."]
 ```
 
-> **Note:** `pythonpath = ["."]` is required because the source code lives in `backend/` root (no `src/` layout). Without it, pytest cannot resolve imports like `from main import app`.
+> `pythonpath = ["."]` is required because source lives in `backend/` root (no `src/` layout). Without it, pytest cannot resolve imports like `from main import app`.
