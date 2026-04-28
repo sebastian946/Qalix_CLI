@@ -1,6 +1,8 @@
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 
+from routes.user_routes import router as user_router
+
 
 def create_app() -> FastAPI:
 
@@ -17,8 +19,7 @@ def create_app() -> FastAPI:
         lifespan=lifespan,
     )
 
-    # How use Routers
-    #application.include_router(users.router, prefix="/api/v1")
+    application.include_router(user_router, prefix="/api/v1")
 
     @application.get("/health", tags=["Health"])
     async def health_check():

@@ -87,6 +87,7 @@ docker compose up -d
 ```
 
 This starts PostgreSQL on `localhost:5432`:
+
 - User: `user123`
 - Password: `password123`
 - DB: `my_database`
@@ -103,11 +104,11 @@ The server starts on `http://localhost:8000`.
 
 ## Available Endpoints
 
-| Method | Path      | Description        |
-| ------ | --------- | ------------------ |
-| GET    | `/health` | Health check       |
-| GET    | `/docs`   | Swagger UI         |
-| GET    | `/redoc`  | ReDoc              |
+| Method | Path      | Description  |
+| ------ | --------- | ------------ |
+| GET    | `/health` | Health check |
+| GET    | `/docs`   | Swagger UI   |
+| GET    | `/redoc`  | ReDoc        |
 
 Verify the server is running:
 

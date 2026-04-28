@@ -13,4 +13,4 @@ services:
       - db_data:/var/lib/postgresql/data
 
 volumes:
-  pgdata:
+  db_data:

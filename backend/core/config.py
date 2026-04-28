@@ -1,4 +1,8 @@
+from typing import AsyncGenerator
+
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from sqlalchemy.orm import declarative_base
 
 
 class Settings(BaseSettings):
@@ -6,10 +10,29 @@ class Settings(BaseSettings):
     DATABASE_URL: str
     REDIS_URL: str
     ENVIRONMENT: str
-
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
 
 
-# For calling the settings
-# is settings = Settings() and then you can access the variables like settings.ANTHROPIC_API_KEY, settings.DATABASE_URL, etc.
-# print(settings.ANTHROPIC_API_KEY) That way can get access to the environment variables defined in the .env file.
+settings = Settings()  # type: ignore[call-arg]
+
+Base = declarative_base()
+
+engine = create_async_engine(
+    settings.DATABASE_URL,
+    echo=settings.ENVIRONMENT == "DEV",
+)
+
+AsyncSessionLocal = async_sessionmaker(
+    engine,
+    class_=AsyncSession,
+    expire_on_commit=False,
+)
+
+
+async def get_db() -> AsyncGenerator[AsyncSession, None]:
+    async with AsyncSessionLocal() as session:
+        try:
+            yield session
+        except Exception:
+            await session.rollback()
+            raise

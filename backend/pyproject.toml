@@ -18,7 +18,8 @@ dependencies = [
     "chromadb",
     "anthropic",
     "python-dotenv",
-    "redis"
+    "redis",
+    "psycopg2"
 ]
 [dependency-groups]
 dev = [
