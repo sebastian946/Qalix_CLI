@@ -29,17 +29,21 @@ backend/
 ├── agents/       # AI agents built with LangGraph — pending
 ├── chains/       # LangChain pipelines and prompt chains — pending
 ├── core/
-│   └── config.py # App settings via pydantic-settings (.env)
-├── models/       # SQLAlchemy database models — pending
+│   └── config.py # App settings, async SQLAlchemy engine and session
+├── models/
+│   ├── __init__.py
+│   └── model.py  # SQLAlchemy models: User, Job, JobStep, Subscription, Integration
+├── alembic/
+│   └── env.py    # Alembic env configured for async SQLAlchemy
+├── alembic.ini   # Alembic configuration (script_location, logging)
 ├── routes/       # Route registration — pending
 ├── schemas/      # Pydantic schemas for request/response validation — pending
 ├── services/     # Business logic layer — pending
-├── alembic/      # Database migrations
 ├── test/
 │   ├── unit/
 │   ├── integration/
 │   └── e2e/
-├── docker-compose.yaml  # PostgreSQL service
+├── docker-compose.yaml  # PostgreSQL service (port 5433)
 ├── pyproject.toml
 └── main.py       # Application entry point (FastAPI app factory + /health)
 ```
@@ -62,35 +66,42 @@ uv sync --all-groups
 
 ### Environment Variables
 
-The `.env` file is already present. Update the values before running:
+Create or update the `.env` file in the `backend/` root:
 
 ```env
 ANTHROPIC_API_KEY=your_anthropic_api_key_here
-DATABASE_URL=your_database_url_here
+DATABASE_URL=postgresql+asyncpg://user123:password123@localhost:5433/qalix_db
 REDIS_URL=your_redis_url_here
 ENVIRONMENT=DEV
 ```
 
+> **Note:** The port is `5433` (not the default `5432`) to avoid conflicts with a local PostgreSQL installation. Adjust if your environment is different.
+
 Settings are loaded via `core/config.py` using `pydantic-settings`. Access them like:
 
 ```python
-from core.config import Settings
+from core.config import settings
 
-settings = Settings()
-print(settings.ANTHROPIC_API_KEY)
+print(settings.DATABASE_URL)
 ```
 
 ### Start the Database
 
 ```bash
-docker compose up -d
+docker compose up -d db
 ```
 
-This starts PostgreSQL on `localhost:5432`:
+This starts PostgreSQL on `localhost:5433` (mapped from container port 5432):
 
 - User: `user123`
 - Password: `password123`
-- DB: `my_database`
+- DB: `qalix_db`
+
+> If you already had the container running with an old volume (`my_database`), recreate it:
+> ```bash
+> docker compose down -v
+> docker compose up -d db
+> ```
 
 ### Run the Server
 
@@ -132,11 +143,34 @@ uv run mypy .                # type checking
 
 ### Database Migrations
 
+Alembic is configured with async SQLAlchemy support. The `alembic/env.py` reads `DATABASE_URL` from `core/config.py` (via `.env`) and registers all models from `models/model.py` automatically for autogenerate support.
+
 ```bash
-uv run alembic revision --autogenerate -m "description"  # create migration
-uv run alembic upgrade head                              # apply migrations
-uv run alembic downgrade -1                              # rollback one step
+# Generate a migration from model changes
+uv run alembic revision --autogenerate -m "description"
+
+# Apply all pending migrations
+uv run alembic upgrade head
+
+# Rollback one step
+uv run alembic downgrade -1
+
+# Show migration history
+uv run alembic history
+
+# Show current applied revision
+uv run alembic current
 ```
+
+#### Database Tables
+
+| Table           | Model          | Description                                        |
+| --------------- | -------------- | -------------------------------------------------- |
+| `users`         | `User`         | Registered users with plan and monthly usage       |
+| `jobs`          | `Job`          | Code analysis jobs submitted by users              |
+| `jobs_steps`    | `JobStep`      | Individual LangGraph agent steps per job           |
+| `subscriptions` | `Subscription` | Active Stripe subscriptions linked to users        |
+| `integrations`  | `Integration`  | Optional third-party integrations (Jira, Slack, GitHub) |
 
 ### Tests
 
