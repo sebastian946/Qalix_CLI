@@ -25,6 +25,9 @@ Qalix helps teams generate, execute, and maintain test suites using AI agents, r
 
 ```
 backend/
+├── .github/
+│   └── workflows/
+│       └── pipeline.yml  # CI: ruff → mypy → pytest (coverage ≥ 70%)
 ├── api/          # HTTP endpoints and routers (FastAPI) — pending
 ├── agents/       # AI agents built with LangGraph — pending
 ├── chains/       # LangChain pipelines and prompt chains — pending
@@ -43,7 +46,8 @@ backend/
 │   ├── unit/
 │   ├── integration/
 │   └── e2e/
-├── docker-compose.yaml  # PostgreSQL service (port 5433)
+├── docker-compose.yaml  # Backend + PostgreSQL + Redis (healthchecks + hot reload)
+├── Dockerfile           # Multi-stage production image (uv + python:3.12-slim)
 ├── pyproject.toml
 └── main.py       # Application entry point (FastAPI app factory + /health)
 ```
@@ -56,7 +60,7 @@ backend/
 
 - Python 3.12+
 - [uv](https://docs.astral.sh/uv/) (package manager)
-- Docker (for PostgreSQL via docker-compose)
+- Docker + Docker Compose (para levantar PostgreSQL, Redis y el backend)
 
 ### Installation
 
@@ -85,31 +89,37 @@ from core.config import settings
 print(settings.DATABASE_URL)
 ```
 
-### Start the Database
+### Start the Full Stack
+
+Levanta backend, PostgreSQL y Redis con un solo comando:
 
 ```bash
-docker compose up -d db
+docker compose up --build
 ```
 
-This starts PostgreSQL on `localhost:5433` (mapped from container port 5432):
+| Servicio  | Host local         | Descripción                        |
+| --------- | ------------------ | ---------------------------------- |
+| backend   | `localhost:8000`   | FastAPI con hot reload activo      |
+| postgres  | `localhost:5433`   | PostgreSQL 16 (user123/qalix_db)   |
+| redis     | `localhost:6379`   | Redis 7                            |
 
-- User: `user123`
-- Password: `password123`
-- DB: `qalix_db`
+El backend espera a que PostgreSQL pase su healthcheck (`pg_isready`) antes de iniciar.
 
-> If you already had the container running with an old volume (`my_database`), recreate it:
+El código local se monta como volumen — cualquier cambio en archivos `.py` recarga el servidor automáticamente sin reconstruir la imagen.
+
+> Para reiniciar desde cero (borrar volúmenes):
 > ```bash
 > docker compose down -v
-> docker compose up -d db
+> docker compose up --build
 > ```
 
-### Run the Server
+### Run the Server (without Docker)
 
 ```bash
 uv run uvicorn main:app --reload --port 8000
 ```
 
-The server starts on `http://localhost:8000`.
+Requiere PostgreSQL y Redis corriendo localmente (o vía `docker compose up -d db redis`).
 
 ---
 
@@ -127,6 +137,25 @@ Verify the server is running:
 curl http://localhost:8000/health
 # {"status": "ok"}
 ```
+
+---
+
+## CI/CD
+
+El pipeline de GitHub Actions corre automáticamente en cada push y pull request.
+
+**Archivo:** [`.github/workflows/pipeline.yml`](.github/workflows/pipeline.yml)
+
+### Pasos del pipeline
+
+| Paso | Herramienta | Qué verifica |
+| ---- | ----------- | ------------ |
+| Lint | `ruff check .` | Errores de estilo, imports, bugs comunes |
+| Format | `ruff format --check .` | Formato consistente sin modificar archivos |
+| Type check | `mypy . --ignore-missing-imports` | Anotaciones de tipos |
+| Tests | `pytest --cov-fail-under=70` | Tests + cobertura mínima del 70% |
+
+Las dependencias se cachean con `astral-sh/setup-uv` usando `uv.lock` como clave — el pipeline solo reinstala si cambia el lock file.
 
 ---
 
