@@ -1,0 +1,12 @@
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+.env
+.env.*
+test/
+alembic/versions/__pycache__/
+.git/
+.gitignore
+README.md
+README_tmp.html
