@@ -1,8 +1,8 @@
 services:
   db:
-    image: postgres:15-alpine
-    container_name: postgres_db
-    restart: always
+    image: postgres:16-alpine
+    container_name: qalix_postgres
+    restart: unless-stopped
     environment:
       POSTGRES_USER: user123
       POSTGRES_PASSWORD: password123
@@ -11,6 +11,45 @@ services:
       - "5433:5432"
     volumes:
       - db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user123 -d qalix_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: qalix_redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build: .
+    container_name: qalix_backend
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    environment:
+      # Override .env values to use internal Docker network hostnames
+      DATABASE_URL: postgresql+asyncpg://user123:password123@db:5432/qalix_db
+      REDIS_URL: redis://redis:6379
+    volumes:
+      - .:/app
+      - /app/.venv  # Preserves the venv installed in the image layer
+    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
 
 volumes:
   db_data:
