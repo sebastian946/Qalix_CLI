@@ -9,7 +9,6 @@ from core.config import Base
 class Plan(enum.Enum):
     FREE = "free"
     PRO = "pro"
-    ENTERPRISE = "enterprise"
 
 
 class SubscriptionStatus(enum.Enum):
@@ -44,7 +43,7 @@ class User(Base):
     id = Column(Integer, primary_key=True)
     clerk_id = Column(String, unique=True, nullable=False)
     email = Column(String, unique=True, nullable=False)
-    plan = Column(Enum(Plan))
+    plan = Column(Enum(Plan), nullable=False, default=Plan.FREE)
     job_used_this_month = Column(Integer, default=0)
     month_reset_at = Column(DateTime(timezone=True), nullable=True)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
