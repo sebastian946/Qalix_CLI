@@ -150,3 +150,57 @@ async def test_get_job_different_user_returns_403() -> None:
         assert response.status_code == 403
     finally:
         app.dependency_overrides.clear()
+
+
+# --- GET /jobs ---
+
+def _override_get_db_with_jobs(jobs: list[MagicMock]) -> None:
+    session = AsyncMock()
+    mock_result = MagicMock()
+    mock_result.scalars.return_value.all.return_value = jobs
+    session.execute = AsyncMock(return_value=mock_result)
+
+    async def _get_db():
+        yield session
+
+    app.dependency_overrides[get_db] = _get_db
+
+
+@pytest.mark.asyncio
+async def test_get_all_jobs_empty_list_returns_200() -> None:
+    _override_get_db_with_jobs([])
+    try:
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+            response = await client.get("/api/v1/jobs")
+        assert response.status_code == 200
+        assert response.json() == []
+    finally:
+        app.dependency_overrides.clear()
+
+
+@pytest.mark.asyncio
+async def test_get_all_jobs_returns_only_authenticated_user_jobs() -> None:
+    user_jobs = [make_mock_job(job_id=1, user_id=1), make_mock_job(job_id=2, user_id=1)]
+    _override_get_db_with_jobs(user_jobs)
+    try:
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+            response = await client.get("/api/v1/jobs")
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data) == 2
+        assert all(job["user_id"] == 1 for job in data)
+    finally:
+        app.dependency_overrides.clear()
+
+
+@pytest.mark.asyncio
+async def test_get_all_jobs_pagination_params_accepted() -> None:
+    jobs = [make_mock_job(job_id=i, user_id=1) for i in range(1, 4)]
+    _override_get_db_with_jobs(jobs[:2])
+    try:
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+            response = await client.get("/api/v1/jobs?limit=2&offset=0")
+        assert response.status_code == 200
+        assert len(response.json()) == 2
+    finally:
+        app.dependency_overrides.clear()

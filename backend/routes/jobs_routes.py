@@ -5,7 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.config import get_db
 from schemas.schemas import MAX_CODE_SIZE, CreateJobRequest, CreateJobResponse, JobResponse
-from services.jobs_services import create_job, get_job, run_analysis
+from services.jobs_services import create_job, get_job, run_analysis, get_all_jobs
 
 router = APIRouter()
 
@@ -36,3 +36,13 @@ async def get_job_endpoint(job_id: int, db: AsyncSession = Depends(get_db)) -> J
     job = await get_job(db, job_id, user_id=1)
 
     return JobResponse.model_validate(job)
+
+@router.get("/jobs", response_model=list[JobResponse], tags=["Jobs"])
+async def get_all_jobs_endpoint(
+    db: AsyncSession = Depends(get_db),
+    limit: int = 100,
+    offset: int = 0,
+) -> list[JobResponse]:
+    # TODO: replace with actual user_id from authentication
+    jobs = await get_all_jobs(db, user_id=1, limit=limit, offset=offset)
+    return [JobResponse.model_validate(job) for job in jobs]

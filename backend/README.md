@@ -28,28 +28,37 @@ backend/
 ├── .github/
 │   └── workflows/
 │       └── pipeline.yml  # CI: ruff → mypy → pytest (coverage ≥ 70%)
-├── api/          # HTTP endpoints and routers (FastAPI) — pending
-├── agents/       # AI agents built with LangGraph — pending
-├── chains/       # LangChain pipelines and prompt chains — pending
+├── agents/
+│   └── qa_agent.py       # LangChain agent: generates unit tests via Claude
+├── chains/               # LangChain pipelines and prompt chains
 ├── core/
-│   └── config.py # App settings, async SQLAlchemy engine and session
+│   └── config.py         # Settings, SQLAlchemy engine/session, Redis client, LLM client
 ├── models/
 │   ├── __init__.py
-│   └── model.py  # SQLAlchemy models: User, Job, JobStep, Subscription, Integration
+│   └── model.py          # SQLAlchemy models: User, Job, JobStep, Subscription, Integration
 ├── alembic/
-│   └── env.py    # Alembic env configured for async SQLAlchemy
-├── alembic.ini   # Alembic configuration (script_location, logging)
-├── routes/       # Route registration — pending
-├── schemas/      # Pydantic schemas for request/response validation — pending
-├── services/     # Business logic layer — pending
+│   └── env.py            # Alembic env configured for async SQLAlchemy
+├── alembic.ini           # Alembic configuration (script_location, logging)
+├── routes/
+│   ├── health_routes.py  # GET /health — checks PostgreSQL and Redis
+│   ├── jobs_routes.py    # POST /jobs, GET /jobs, GET /jobs/{job_id}
+│   └── user_routes.py    # POST /register_user
+├── schemas/
+│   └── schemas.py        # Pydantic schemas for request/response validation
+├── services/
+│   └── jobs_services.py  # Business logic: create_job, get_job, get_all_jobs, run_analysis
 ├── test/
+│   ├── conftest.py       # Shared fixtures: mock_llm
 │   ├── unit/
+│   │   ├── test_jobs.py
+│   │   ├── test_main.py
+│   │   └── test_qa_agent.py
 │   ├── integration/
 │   └── e2e/
-├── docker-compose.yaml  # Backend + PostgreSQL + Redis (healthchecks + hot reload)
-├── Dockerfile           # Multi-stage production image (uv + python:3.12-slim)
+├── docker-compose.yaml   # Backend + PostgreSQL + Redis (healthchecks + hot reload)
+├── Dockerfile            # Multi-stage production image (uv + python:3.12-slim)
 ├── pyproject.toml
-└── main.py       # Application entry point (FastAPI app factory + /health)
+└── main.py               # Application entry point (FastAPI app factory)
 ```
 
 ---
@@ -60,7 +69,7 @@ backend/
 
 - Python 3.12+
 - [uv](https://docs.astral.sh/uv/) (package manager)
-- Docker + Docker Compose (para levantar PostgreSQL, Redis y el backend)
+- Docker + Docker Compose (to run PostgreSQL, Redis, and the backend)
 
 ### Installation
 
@@ -81,33 +90,37 @@ ENVIRONMENT=DEV
 
 > **Note:** The port is `5433` (not the default `5432`) to avoid conflicts with a local PostgreSQL installation. Adjust if your environment is different.
 
-Settings are loaded via `core/config.py` using `pydantic-settings`. Access them like:
+Settings are loaded via `core/config.py` using `pydantic-settings`. The module also exposes shared clients:
 
 ```python
-from core.config import settings
+from core.config import settings, llm, redis_client
 
-print(settings.DATABASE_URL)
+print(settings.DATABASE_URL)  # PostgreSQL URL
+# llm          → ChatAnthropic instance (Claude Haiku)
+# redis_client → aioredis client
 ```
+
+> **Note:** If `ANTHROPIC_API_KEY` is missing or empty, the app fails at startup with a clear Pydantic validation error.
 
 ### Start the Full Stack
 
-Levanta backend, PostgreSQL y Redis con un solo comando:
+Start the backend, PostgreSQL, and Redis with a single command:
 
 ```bash
 docker compose up --build
 ```
 
-| Servicio  | Host local         | Descripción                        |
-| --------- | ------------------ | ---------------------------------- |
-| backend   | `localhost:8000`   | FastAPI con hot reload activo      |
-| postgres  | `localhost:5433`   | PostgreSQL 16 (user123/qalix_db)   |
-| redis     | `localhost:6379`   | Redis 7                            |
+| Service  | Local host         | Description                             |
+| -------- | ------------------ | --------------------------------------- |
+| backend  | `localhost:8000`   | FastAPI with hot reload enabled         |
+| postgres | `localhost:5433`   | PostgreSQL 16 (user123/qalix_db)        |
+| redis    | `localhost:6379`   | Redis 7                                 |
 
-El backend espera a que PostgreSQL pase su healthcheck (`pg_isready`) antes de iniciar.
+The backend waits for PostgreSQL to pass its healthcheck (`pg_isready`) before starting.
 
-El código local se monta como volumen — cualquier cambio en archivos `.py` recarga el servidor automáticamente sin reconstruir la imagen.
+Local source code is mounted as a volume — any change to `.py` files reloads the server automatically without rebuilding the image.
 
-> Para reiniciar desde cero (borrar volúmenes):
+> To reset from scratch (delete volumes):
 > ```bash
 > docker compose down -v
 > docker compose up --build
@@ -119,43 +132,87 @@ El código local se monta como volumen — cualquier cambio en archivos `.py` re
 uv run uvicorn main:app --reload --port 8000
 ```
 
-Requiere PostgreSQL y Redis corriendo localmente (o vía `docker compose up -d db redis`).
+Requires PostgreSQL and Redis running locally (or via `docker compose up -d db redis`).
 
 ---
 
 ## Available Endpoints
 
-| Method | Path      | Description  |
-| ------ | --------- | ------------ |
-| GET    | `/health` | Health check |
-| GET    | `/docs`   | Swagger UI   |
-| GET    | `/redoc`  | ReDoc        |
+| Method | Path                    | Status | Description                              |
+| ------ | ----------------------- | ------ | ---------------------------------------- |
+| GET    | `/health`               | ✅     | Health check (PostgreSQL + Redis)        |
+| GET    | `/docs`                 | ✅     | Swagger UI                               |
+| GET    | `/redoc`                | ✅     | ReDoc                                    |
+| POST   | `/api/v1/jobs`          | ✅     | Submit a code analysis job (async, 202)  |
+| GET    | `/api/v1/jobs`          | ✅     | List jobs for the current user (paginated) |
+| GET    | `/api/v1/jobs/{job_id}` | ✅     | Get status and result of a specific job  |
+| POST   | `/api/v1/register_user` | 🚧     | Register a new user (not yet implemented) |
 
-Verify the server is running:
+### Health check response
 
 ```bash
 curl http://localhost:8000/health
-# {"status": "ok"}
+# 200 — all dependencies healthy
+{"status": "ok", "dependencies": {"postgres": "ok", "redis": "ok"}}
+
+# 503 — one or more dependencies unreachable
+{"status": "degraded", "dependencies": {"postgres": "ok", "redis": "error"}}
+```
+
+### Job endpoints
+
+```bash
+# Create a job
+curl -X POST http://localhost:8000/api/v1/jobs \
+  -H "Content-Type: application/json" \
+  -d '{"filename": "math.py", "code": "def add(a, b): return a + b"}'
+# {"job_id": 1}
+
+# Get job status
+curl http://localhost:8000/api/v1/jobs/1
+
+# List jobs (supports ?limit=100&offset=0)
+curl "http://localhost:8000/api/v1/jobs?limit=10&offset=0"
+```
+
+---
+
+## AI Agent
+
+The QA agent lives in `agents/qa_agent.py` and uses `ChatAnthropic` (Claude Haiku) via LangChain to generate unit tests from code.
+
+```python
+from agents.qa_agent import chat
+
+result = await chat(code="def add(a, b): return a + b", filename="math.py")
+```
+
+The LLM client is initialized once in `core/config.py` and imported from there to avoid multiple instances. In tests, it is mocked using the `mock_llm` fixture from `test/conftest.py`:
+
+```python
+async def test_something(mock_llm) -> None:
+    # mock_llm.ainvoke returns MagicMock(content="mocked response")
+    ...
 ```
 
 ---
 
 ## CI/CD
 
-El pipeline de GitHub Actions corre automáticamente en cada push y pull request.
+The GitHub Actions pipeline runs automatically on every push and pull request.
 
-**Archivo:** [`.github/workflows/pipeline.yml`](.github/workflows/pipeline.yml)
+**File:** [`.github/workflows/pipeline.yml`](.github/workflows/pipeline.yml)
 
-### Pasos del pipeline
+### Pipeline steps
 
-| Paso | Herramienta | Qué verifica |
-| ---- | ----------- | ------------ |
-| Lint | `ruff check .` | Errores de estilo, imports, bugs comunes |
-| Format | `ruff format --check .` | Formato consistente sin modificar archivos |
-| Type check | `mypy . --ignore-missing-imports` | Anotaciones de tipos |
-| Tests | `pytest --cov-fail-under=70` | Tests + cobertura mínima del 70% |
+| Step        | Tool                              | What it checks                              |
+| ----------- | --------------------------------- | ------------------------------------------- |
+| Lint        | `ruff check .`                    | Style errors, imports, common bugs          |
+| Format      | `ruff format --check .`           | Consistent formatting without file changes  |
+| Type check  | `mypy . --ignore-missing-imports` | Type annotations                            |
+| Tests       | `pytest --cov-fail-under=70`      | Test suite + minimum 70% coverage           |
 
-Las dependencias se cachean con `astral-sh/setup-uv` usando `uv.lock` como clave — el pipeline solo reinstala si cambia el lock file.
+Dependencies are cached with `astral-sh/setup-uv` using `uv.lock` as the cache key — the pipeline only reinstalls when the lock file changes.
 
 ---
 

@@ -1,6 +1,7 @@
 from typing import cast
 
 from fastapi import HTTPException
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from models.model import Job, Status
@@ -30,3 +31,14 @@ async def get_job(db: AsyncSession, job_id: int, user_id: int) -> Job:
     if cast(int, job.user_id) != user_id:
         raise HTTPException(status_code=403, detail="Access forbidden")
     return job
+
+async def get_all_jobs(db: AsyncSession, user_id: int, limit: int = 100, offset: int = 0) -> list[Job]:
+    query = (
+        select(Job)
+        .where(Job.user_id == user_id)
+        .order_by(Job.created_at.desc())
+        .limit(limit)
+        .offset(offset)
+    )
+    result = await db.execute(query)
+    return list(result.scalars().all())

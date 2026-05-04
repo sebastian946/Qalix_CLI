@@ -1,5 +1,7 @@
 from typing import AsyncGenerator
 
+import redis.asyncio as aioredis
+from langchain_anthropic import ChatAnthropic
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import declarative_base
@@ -14,6 +16,15 @@ class Settings(BaseSettings):
 
 
 settings = Settings()  # type: ignore[call-arg]
+
+llm = ChatAnthropic(
+    model_name="claude-haiku-4-5-20251001",
+    api_key=settings.ANTHROPIC_API_KEY,  # type: ignore[arg-type]
+    temperature=0,
+    max_retries=2,
+)
+
+redis_client: aioredis.Redis = aioredis.from_url(settings.REDIS_URL, decode_responses=True)
 
 Base = declarative_base()
 
