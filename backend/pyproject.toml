@@ -69,3 +69,4 @@ testpaths = [
     "test"
 ]
 pythonpath = ["."]
+asyncio_mode = "auto"

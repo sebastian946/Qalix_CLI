@@ -3,6 +3,8 @@ from datetime import datetime
 from typing import Optional, List
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, PositiveInt
 
+MAX_CODE_SIZE = 100_000  # ~100KB in characters
+
 from models.model import Status
 
 # Use schema example user = CreateUserSchema(**external_data_user) to create a user schema instance from external data.
@@ -150,3 +152,12 @@ external_data_integration = {
     "type": "github",
     "is_active": True
 }
+
+
+class CreateJobRequest(BaseModel):
+    filename: str = Field(..., min_length=1)
+    code: str = Field(..., min_length=1)
+
+
+class CreateJobResponse(BaseModel):
+    job_id: int
