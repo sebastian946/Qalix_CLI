@@ -5,7 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.config import get_db
 from schemas.schemas import MAX_CODE_SIZE, CreateJobRequest, CreateJobResponse, JobResponse
-from services.jobs_services import create_job, get_job, run_analysis, get_all_jobs
+from services.jobs_services import JobService, get_job_service
 
 router = APIRouter()
 
@@ -22,8 +22,9 @@ async def create_job_endpoint(
     # TODO: replace with actual user_id from authentication
     user_id = 1
 
-    job = await create_job(db, user_id, job_data)
-    background_tasks.add_task(run_analysis, cast(int, job.id))
+    service = get_job_service(db)
+    job = await service.create_job(user_id, job_data)
+    background_tasks.add_task(service.run_analysis, cast(int, job.id))
 
     return CreateJobResponse(job_id=cast(int, job.id))
 
@@ -33,7 +34,11 @@ async def get_job_endpoint(job_id: int, db: AsyncSession = Depends(get_db)) -> J
         raise HTTPException(status_code=400, detail="Invalid job ID")
 
     # TODO: replace with actual user_id from authentication
-    job = await get_job(db, job_id, user_id=1)
+    service = get_job_service(db)
+    job = await service.get_job(job_id, user_id=1)
+
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
 
     return JobResponse.model_validate(job)
 
@@ -44,5 +49,6 @@ async def get_all_jobs_endpoint(
     offset: int = 0,
 ) -> list[JobResponse]:
     # TODO: replace with actual user_id from authentication
-    jobs = await get_all_jobs(db, user_id=1, limit=limit, offset=offset)
+    service = get_job_service(db)
+    jobs = await service.get_all_jobs(user_id=1, limit=limit, offset=offset)
     return [JobResponse.model_validate(job) for job in jobs]
