@@ -19,7 +19,9 @@ dependencies = [
     "anthropic",
     "python-dotenv",
     "redis",
-    "psycopg2"
+    "psycopg2",
+    "langchain-chroma",
+    "pypdf"
 ]
 [dependency-groups]
 dev = [
