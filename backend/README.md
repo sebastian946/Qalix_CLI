@@ -29,7 +29,8 @@ backend/
 │   └── workflows/
 │       └── pipeline.yml  # CI: ruff → mypy → pytest (coverage ≥ 70%)
 ├── agents/
-│   └── qa_agent.py       # LangChain agent: generates unit tests via Claude
+│   ├── qa_agent.py       # Simple LangChain chat: single-turn test generation via Claude
+│   └── node_agent.py     # LangGraph nodes: AgentState, analysis_node, generate_test_node, review_test_node
 ├── chains/               # LangChain pipelines and prompt chains
 ├── core/
 │   └── config.py         # Settings, SQLAlchemy engine/session, Redis client, LLM client
@@ -48,11 +49,12 @@ backend/
 ├── services/
 │   └── jobs_services.py  # Business logic: create_job, get_job, get_all_jobs, run_analysis
 ├── test/
-│   ├── conftest.py       # Shared fixtures: mock_llm
+│   ├── conftest.py       # Shared fixtures: mock_llm, mock_analysis_llm, mock_review_llm
 │   ├── unit/
 │   │   ├── test_jobs.py
 │   │   ├── test_main.py
-│   │   └── test_qa_agent.py
+│   │   ├── test_qa_agent.py
+│   │   └── test_node_agent.py
 │   ├── integration/
 │   └── e2e/
 ├── docker-compose.yaml   # Backend + PostgreSQL + Redis (healthchecks + hot reload)
@@ -179,7 +181,11 @@ curl "http://localhost:8000/api/v1/jobs?limit=10&offset=0"
 
 ## AI Agent
 
-The QA agent lives in `agents/qa_agent.py` and uses `ChatAnthropic` (Claude Haiku) via LangChain to generate unit tests from code.
+The LLM client (`ChatAnthropic` / Claude Haiku) is initialized once in `core/config.py` and imported from there by all agents to avoid multiple instances.
+
+### Simple agent — `agents/qa_agent.py`
+
+Single-turn call: takes code and filename, returns generated tests as a plain string.
 
 ```python
 from agents.qa_agent import chat
@@ -187,12 +193,44 @@ from agents.qa_agent import chat
 result = await chat(code="def add(a, b): return a + b", filename="math.py")
 ```
 
-The LLM client is initialized once in `core/config.py` and imported from there to avoid multiple instances. In tests, it is mocked using the `mock_llm` fixture from `test/conftest.py`:
+### LangGraph pipeline — `agents/node_agent.py`
+
+A three-node pipeline where each node reads from and writes to `AgentState`:
+
+```
+[analysis_node] → [generate_test_node] → [review_test_node]
+      ↓                    ↓                      ↓
+  analysis: dict     test_cases: list[dict]  final_tests: str
+```
+
+| Node | Input from state | Output to state | Structured model |
+| ---- | ---------------- | --------------- | ---------------- |
+| `analysis_node` | `code`, `filename` | `analysis` | `CodeAnalysis` |
+| `generate_test_node` | `analysis` | `test_cases` | `list[TestCase]` |
+| `review_test_node` | `test_cases` | `final_tests` | `ReviewTestFeedback` |
+
+`final_tests` contains the corrected pytest code that is saved as the job result.
+
+**State definition:**
 
 ```python
-async def test_something(mock_llm) -> None:
-    # mock_llm.ainvoke returns MagicMock(content="mocked response")
-    ...
+class AgentState(TypedDict):
+    code: str
+    filename: str
+    status: str
+    is_finished: bool
+    analysis: NotRequired[dict]        # populated by analysis_node
+    test_cases: NotRequired[list[dict]] # populated by generate_test_node
+    final_tests: NotRequired[str]      # populated by review_test_node
+```
+
+### Mocking in tests
+
+Each node has a dedicated fixture in `test/conftest.py` that patches `agents.node_agent.llm`:
+
+```python
+async def test_something(mock_analysis_llm) -> None: ...  # patches analysis_node
+async def test_something(mock_review_llm) -> None: ...    # patches review_test_node
 ```
 
 ---
