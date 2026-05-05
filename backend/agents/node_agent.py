@@ -4,6 +4,8 @@ from pydantic import BaseModel
 
 from core.config import llm
 
+from langgraph.graph import StateGraph, END
+
 _SYSTEM_PROMPT_ANALYSIS = (
     "You are a QA expert. Analyze the provided code and identify: "
     "the main functions that should be tested, edge cases to cover, "
@@ -78,3 +80,15 @@ async def review_test_node(state: AgentState) -> dict:
     ]
     result = cast(ReviewTestFeedback, await structured_llm.ainvoke(messages))
     return {"final_tests": result.corrected_test_code}
+
+
+workflow = StateGraph(AgentState)
+workflow.add_node("analysis", analysis_node)
+workflow.add_node("generate_test", generate_test_node)
+workflow.add_node("review_test", review_test_node)
+workflow.set_entry_point("analysis")
+workflow.add_edge("analysis", "generate_test")
+workflow.add_edge("generate_test", "review_test")
+workflow.add_edge("review_test", END)
+
+graph = workflow.compile()
