@@ -1,14 +1,15 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 from fastapi.responses import JSONResponse
 from sqlalchemy import text
 
-from core.config import engine, redis_client
+from core.config import engine, get_redis_service
+from services.redis_service import RedisService
 
 router = APIRouter()
 
 
 @router.get("/health", tags=["Health"])
-async def health_check() -> JSONResponse:
+async def health_check(redis_service: RedisService = Depends(get_redis_service)) -> JSONResponse:
     dependencies: dict[str, str] = {"postgres": "ok", "redis": "ok"}
 
     try:
@@ -17,9 +18,8 @@ async def health_check() -> JSONResponse:
     except Exception:
         dependencies["postgres"] = "error"
 
-    try:
-        await redis_client.ping()
-    except Exception:
+    # Use RedisService ping method with graceful degradation
+    if not await redis_service.ping():
         dependencies["redis"] = "error"
 
     all_ok = all(v == "ok" for v in dependencies.values())

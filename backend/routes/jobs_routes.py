@@ -3,9 +3,10 @@ from typing import cast
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from core.config import get_db
+from core.config import get_db, get_redis_service
 from schemas.schemas import MAX_CODE_SIZE, CreateJobRequest, CreateJobResponse, JobResponse
 from services.jobs_services import JobService, get_job_service
+from services.redis_service import RedisService
 
 router = APIRouter()
 
@@ -15,6 +16,7 @@ async def create_job_endpoint(
     job_data: CreateJobRequest,
     background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db),
+    redis_service: RedisService = Depends(get_redis_service),
 ) -> CreateJobResponse:
     if len(job_data.code) > MAX_CODE_SIZE:
         raise HTTPException(status_code=413, detail="Code exceeds maximum allowed size")
@@ -22,20 +24,24 @@ async def create_job_endpoint(
     # TODO: replace with actual user_id from authentication
     user_id = 1
 
-    service = get_job_service(db)
+    service = get_job_service(db, redis_service)
     job = await service.create_job(user_id, job_data)
     background_tasks.add_task(service.run_analysis, cast(int, job.id))
 
     return CreateJobResponse(job_id=cast(int, job.id))
 
 @router.get("/jobs/{job_id}", response_model=JobResponse, tags=["Jobs"])
-async def get_job_endpoint(job_id: int, db: AsyncSession = Depends(get_db)) -> JobResponse:
+async def get_job_endpoint(
+    job_id: int,
+    db: AsyncSession = Depends(get_db),
+    redis_service: RedisService = Depends(get_redis_service),
+) -> JobResponse:
     if job_id <= 0:
         raise HTTPException(status_code=400, detail="Invalid job ID")
 
     # TODO: replace with actual user_id from authentication
-    service = get_job_service(db)
-    job = await service.get_job(job_id, user_id=1)
+    service = get_job_service(db, redis_service)
+    job = await service.get_job(job_id, user_id=1)  # Raises 403 if forbidden
 
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
@@ -45,10 +51,11 @@ async def get_job_endpoint(job_id: int, db: AsyncSession = Depends(get_db)) -> J
 @router.get("/jobs", response_model=list[JobResponse], tags=["Jobs"])
 async def get_all_jobs_endpoint(
     db: AsyncSession = Depends(get_db),
+    redis_service: RedisService = Depends(get_redis_service),
     limit: int = 100,
     offset: int = 0,
 ) -> list[JobResponse]:
     # TODO: replace with actual user_id from authentication
-    service = get_job_service(db)
+    service = get_job_service(db, redis_service)
     jobs = await service.get_all_jobs(user_id=1, limit=limit, offset=offset)
     return [JobResponse.model_validate(job) for job in jobs]

@@ -132,18 +132,21 @@ async def test_get_job_returns_none_for_nonexistent_id(mock_db_session: AsyncMoc
 
 
 @pytest.mark.asyncio
-async def test_get_job_returns_none_for_different_user(mock_db_session: AsyncMock) -> None:
-    """Test that get_job returns None when job belongs to different user."""
+async def test_get_job_raises_403_for_different_user(mock_db_session: AsyncMock) -> None:
+    """Test that get_job raises HTTPException 403 when job belongs to different user."""
     # Arrange
+    from fastapi import HTTPException
+
     service = JobService(mock_db_session)
     job = make_mock_job(job_id=1, user_id=2)
     mock_db_session.get = AsyncMock(return_value=job)
 
-    # Act
-    result = await service.get_job(1, user_id=1)
+    # Act & Assert
+    with pytest.raises(HTTPException) as exc_info:
+        await service.get_job(1, user_id=1)
 
-    # Assert
-    assert result is None
+    assert exc_info.value.status_code == 403
+    assert exc_info.value.detail == "Access forbidden"
 
 
 @pytest.mark.asyncio

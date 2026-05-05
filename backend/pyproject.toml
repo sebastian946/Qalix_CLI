@@ -7,7 +7,7 @@ requires-python = ">=3.12"
 dependencies = [
     "fastapi",
     "uvicorn[standard]",
-    "pydantic",
+    "pydantic[email]",
     "pydantic-settings",
     "sqlalchemy",
     "alembic",
@@ -19,9 +19,10 @@ dependencies = [
     "anthropic",
     "python-dotenv",
     "redis",
-    "psycopg2",
+    "psycopg2-binary",
     "langchain-chroma",
-    "pypdf"
+    "pypdf",
+    "greenlet"
 ]
 [dependency-groups]
 dev = [

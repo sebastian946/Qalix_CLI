@@ -8,6 +8,7 @@ from core.config import get_db
 from main import app
 from models.model import Status
 from schemas.schemas import MAX_CODE_SIZE
+from services.redis_service import RedisService
 
 
 def make_mock_job(
@@ -42,6 +43,20 @@ def make_mock_session(job_id: int = 1) -> AsyncMock:
 
     session.refresh = mock_refresh
     return session
+
+
+@pytest.fixture(autouse=True)
+def setup_redis_service():
+    """Auto-use fixture to setup redis_service for all tests."""
+    mock_redis = AsyncMock()
+    mock_redis.ping = AsyncMock(return_value=True)
+    app.state.redis_service = RedisService(mock_redis)
+
+    yield
+
+    # Cleanup
+    if hasattr(app.state, "redis_service"):
+        delattr(app.state, "redis_service")
 
 
 @pytest.fixture

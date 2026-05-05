@@ -1,20 +1,12 @@
-from contextlib import asynccontextmanager
-
 from fastapi import FastAPI
 
+from core.config import lifespan
 from routes.health_routes import router as health_router
 from routes.jobs_routes import router as jobs_router
 from routes.user_routes import router as user_router
 
 
 def create_app() -> FastAPI:
-
-    @asynccontextmanager
-    async def lifespan(app: FastAPI):
-        print("Open Server...")
-        yield
-        print("Close server")
-
     application = FastAPI(
         title="Qalix CLI API",
         version="0.1.0",
