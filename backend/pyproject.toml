@@ -22,7 +22,8 @@ dependencies = [
     "psycopg2-binary",
     "langchain-chroma",
     "pypdf",
-    "greenlet"
+    "greenlet",
+    "fastapi-limiter"
 ]
 [dependency-groups]
 dev = [

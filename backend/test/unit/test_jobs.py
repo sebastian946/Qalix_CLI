@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -6,9 +6,26 @@ from httpx import ASGITransport, AsyncClient
 
 from core.config import get_db
 from main import app
-from models.model import Status
+from models.model import Plan, Status
 from schemas.schemas import MAX_CODE_SIZE
 from services.redis_service import RedisService
+
+
+def make_mock_user(
+    user_id: int = 1,
+    plan: Plan = Plan.FREE,
+    job_used_this_month: int = 0,
+) -> MagicMock:
+    user = MagicMock()
+    user.id = user_id
+    user.clerk_id = f"clerk_{user_id}"
+    user.email = f"user{user_id}@example.com"
+    user.plan = plan
+    user.job_used_this_month = job_used_this_month
+    user.month_reset_at = datetime.now(timezone.utc) + timedelta(days=30)
+    user.created_at = datetime.now(timezone.utc)
+    user.updated_at = datetime.now(timezone.utc)
+    return user
 
 
 def make_mock_job(
@@ -37,6 +54,10 @@ def make_mock_session(job_id: int = 1) -> AsyncMock:
     session = AsyncMock()
     session.add = MagicMock()
     session.commit = AsyncMock()
+
+    # Mock db.get to return a user
+    mock_user = make_mock_user()
+    session.get = AsyncMock(return_value=mock_user)
 
     async def mock_refresh(obj: object) -> None:
         obj.id = job_id  # type: ignore[attr-defined]
