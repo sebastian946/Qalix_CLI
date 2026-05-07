@@ -1,8 +1,8 @@
 import hashlib
-import logging
 from datetime import datetime, timezone
 from typing import Optional, cast
 
+import structlog
 from fastapi import HTTPException
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -13,7 +13,7 @@ from models.model import Job, Status
 from schemas.schemas import CreateJobRequest
 from services.redis_service import RedisService
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger()
 
 
 class JobService:
@@ -59,51 +59,34 @@ class JobService:
             cached_result = await self.redis_service.get(cache_key)
 
         if cached_result:
-            # CACHE HIT - Use cached result without calling the agent
-            logger.info(
-                f"Cache HIT for job_id={job_id}, hash={code_hash[:8]}... "
-                f"(skipping LLM call)"
-            )
-
+            logger.info("cache_hit", job_id=job_id, code_hash=code_hash[:8])
             job.status = Status.COMPLETED
             job.result = cached_result
             job.completed_at = datetime.now(timezone.utc)
             await self.db.commit()
             return
 
-        # CACHE MISS - Execute the agent
-        logger.info(
-            f"Cache MISS for job_id={job_id}, hash={code_hash[:8]}... "
-            f"(executing LLM)"
-        )
+        logger.info("cache_miss", job_id=job_id, code_hash=code_hash[:8])
 
         # Update status to RUNNING
         job.status = Status.RUNNING
         await self.db.commit()
 
         try:
-            # Execute the agent
             result = await chat(code=cast(str, job.code), filename=cast(str, job.filename))
 
-            # Save to cache for future requests
             if self.redis_service:
-                cache_saved = await self.redis_service.set(
-                    cache_key, result, ttl=settings.CACHE_TTL
-                )
+                cache_saved = await self.redis_service.set(cache_key, result, ttl=settings.CACHE_TTL)
                 if cache_saved:
-                    logger.info(
-                        f"Result cached for hash={code_hash[:8]}... "
-                        f"with TTL={settings.CACHE_TTL}s"
-                    )
+                    logger.info("result_cached", code_hash=code_hash[:8], ttl=settings.CACHE_TTL)
 
-            # Update to COMPLETED with result
             job.status = Status.COMPLETED
             job.result = result
             job.completed_at = datetime.now(timezone.utc)
             await self.db.commit()
 
         except Exception as e:
-            # Update to FAILED with error message
+            logger.exception("agent_execution_failed", job_id=job_id, error=str(e))
             job.status = Status.FAILED
             job.error_message = str(e)
             job.completed_at = datetime.now(timezone.utc)

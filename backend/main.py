@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 
 from core.config import lifespan
+from core.logger import StructuredLoggingMiddleware
 from routes.health_routes import router as health_router
 from routes.jobs_routes import router as jobs_router
 from routes.user_routes import router as user_router
@@ -13,6 +14,8 @@ def create_app() -> FastAPI:
         description="Qalix CLI API for create unit test cases and integration test cases to CD/CI pipelines",
         lifespan=lifespan,
     )
+
+    application.add_middleware(StructuredLoggingMiddleware)
 
     application.include_router(health_router)
     application.include_router(user_router, prefix="/api/v1")

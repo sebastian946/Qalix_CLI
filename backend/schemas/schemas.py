@@ -1,11 +1,14 @@
 import enum
 from datetime import datetime
 from typing import Optional, List
-from pydantic import BaseModel, ConfigDict, EmailStr, Field, PositiveInt
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, PositiveInt, field_validator
 
 MAX_CODE_SIZE = 100_000  # ~100KB in characters
 
 from models.model import Status
+from agents.prompt_sanitizer import PromptSanitizer
+
+_sanitizer = PromptSanitizer()
 
 # Use schema example user = CreateUserSchema(**external_data_user) to create a user schema instance from external data.
 
@@ -157,6 +160,20 @@ external_data_integration = {
 class CreateJobRequest(BaseModel):
     filename: str = Field(..., min_length=1)
     code: str = Field(..., min_length=1)
+
+    @field_validator("filename")
+    @classmethod
+    def filename_must_have_valid_extension(cls, v: str) -> str:
+        if not _sanitizer.validate_extension_file(v):
+            raise ValueError("Filename must have a valid extension: .py, .txt, .md")
+        return v
+
+    @field_validator("code")
+    @classmethod
+    def code_must_be_safe(cls, v: str) -> str:
+        if not _sanitizer.is_safe(v):
+            raise ValueError("Code contains potentially unsafe or prompt injection patterns")
+        return v
 
 
 class CreateJobResponse(BaseModel):

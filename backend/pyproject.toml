@@ -23,7 +23,8 @@ dependencies = [
     "langchain-chroma",
     "pypdf",
     "greenlet",
-    "fastapi-limiter"
+    "fastapi-limiter",
+    "structlog>=25.5.0",
 ]
 [dependency-groups]
 dev = [

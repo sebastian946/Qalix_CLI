@@ -1,26 +1,27 @@
-import logging
+from contextlib import asynccontextmanager
 from typing import AsyncGenerator, Optional
 
 import redis.asyncio as aioredis
-from contextlib import asynccontextmanager
+import structlog
 from fastapi import FastAPI, Request
 from langchain_anthropic import ChatAnthropic
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import declarative_base
 
-
 from services.redis_service import RedisService
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger()
+
 
 class Settings(BaseSettings):
     ANTHROPIC_API_KEY: str
     DATABASE_URL: str
     REDIS_URL: str
     ENVIRONMENT: str
-    CACHE_TTL: int = 3600  # Default: 1 hour (in seconds)
-    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
+    LOG_LEVEL: str = "INFO"
+    CACHE_TTL: int = 3600
+    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -30,9 +31,9 @@ async def lifespan(app: FastAPI):
     try:
         redis_client = aioredis.from_url(settings.REDIS_URL, decode_responses=True)
         await redis_client.ping()
-        logger.info("Redis connected successfully")
+        logger.info("redis_connected")
     except Exception as e:
-        logger.warning(f"Redis connection failed: {e}. Running without cache.")
+        logger.warning("redis_connection_failed", error=str(e))
         redis_client = None
 
     app.state.redis = redis_client
@@ -43,11 +44,14 @@ async def lifespan(app: FastAPI):
     if redis_client:
         try:
             await redis_client.close()
-            logger.info("Redis connection closed")
+            logger.info("redis_disconnected")
         except Exception as e:
-            logger.warning(f"Error closing Redis connection: {e}")
+            logger.warning("redis_close_failed", error=str(e))
 
 settings = Settings()  # type: ignore[call-arg]
+
+from core.logger import configure_logging  # noqa: E402
+configure_logging(log_level=settings.LOG_LEVEL, environment=settings.ENVIRONMENT)
 
 llm = ChatAnthropic(
     model_name="claude-haiku-4-5-20251001",
