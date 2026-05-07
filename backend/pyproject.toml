@@ -67,6 +67,11 @@ quote-style = "double"
 indent-style = "space"
 skip-magic-trailing-comma = false
 
+[tool.mypy]
+python_version = "3.12"
+exclude = ["^\\.venv/", "^examples/", "^alembic/"]
+ignore_missing_imports = true
+
 [tool.pytest.ini_options]
 minversion = "6.0"
 addopts = "-ra -q --cov=."

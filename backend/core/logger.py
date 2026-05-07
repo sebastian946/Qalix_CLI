@@ -28,7 +28,7 @@ def configure_logging(log_level: str = "INFO", environment: str = "PROD") -> Non
     )
 
     structlog.configure(
-        processors=shared_processors + [renderer],
+        processors=shared_processors + [renderer],  # type: ignore[arg-type]
         wrapper_class=structlog.make_filtering_bound_logger(level),
         context_class=dict,
         logger_factory=structlog.PrintLoggerFactory(),

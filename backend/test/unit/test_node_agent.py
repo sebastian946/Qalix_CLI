@@ -11,7 +11,7 @@ def _make_state(**overrides) -> AgentState:
         "status": "pending",
         "is_finished": False,
     }
-    base.update(overrides)
+    base.update(overrides)  # type: ignore[typeddict-item]
     return base
 
 

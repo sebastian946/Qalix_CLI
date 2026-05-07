@@ -1,3 +1,4 @@
+from collections.abc import Generator
 from datetime import UTC, datetime, timedelta
 from unittest.mock import AsyncMock, MagicMock
 
@@ -81,7 +82,7 @@ def setup_redis_service():
 
 
 @pytest.fixture
-def override_db() -> None:
+def override_db() -> Generator[MagicMock, None, None]:
     mock_session = make_mock_session()
 
     async def _get_db():

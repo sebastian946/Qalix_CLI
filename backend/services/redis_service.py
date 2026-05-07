@@ -82,7 +82,7 @@ class RedisService:
             return False
 
         try:
-            await self.client.ping()
+            await self.client.ping()  # type: ignore[misc]
             self._available = True
             return True
         except Exception as e:

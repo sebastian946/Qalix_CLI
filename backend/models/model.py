@@ -1,8 +1,10 @@
 import enum
 from datetime import UTC, datetime
+from typing import Any
 
-from sqlalchemy import Column, DateTime, Enum, ForeignKey, Integer, String, Text
+from sqlalchemy import DateTime, Enum, ForeignKey, String, Text
 from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.orm import Mapped, mapped_column
 
 from core.config import Base
 
@@ -41,66 +43,86 @@ class IntegrationType(enum.Enum):
 class User(Base):
     __tablename__ = "users"
 
-    id = Column(Integer, primary_key=True)
-    clerk_id = Column(String, unique=True, nullable=False)
-    email = Column(String, unique=True, nullable=False)
-    plan = Column(Enum(Plan), nullable=False, default=Plan.FREE)
-    job_used_this_month = Column(Integer, default=0)
-    month_reset_at = Column(DateTime(timezone=True), nullable=True)
-    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
-    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC))
+    id: Mapped[int] = mapped_column(primary_key=True)
+    clerk_id: Mapped[str] = mapped_column(String, unique=True)
+    email: Mapped[str] = mapped_column(String, unique=True)
+    plan: Mapped[Plan] = mapped_column(Enum(Plan), default=Plan.FREE)
+    job_used_this_month: Mapped[int] = mapped_column(default=0)
+    month_reset_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(UTC)
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(UTC),
+        onupdate=lambda: datetime.now(UTC),
+    )
 
 
 class Job(Base):
     __tablename__ = "jobs"
 
-    id = Column(Integer, primary_key=True)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
-    filename = Column(String, nullable=False)
-    code = Column(Text, nullable=False)
-    status = Column(Enum(Status), default=Status.PENDING)
-    result = Column(Text, nullable=True)
-    error_message = Column(Text, nullable=True)
-    tokens_used = Column(Integer, nullable=True)
-    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
-    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC))
-    completed_at = Column(DateTime(timezone=True), nullable=True)
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    filename: Mapped[str] = mapped_column(String)
+    code: Mapped[str] = mapped_column(Text)
+    status: Mapped[Status] = mapped_column(Enum(Status), default=Status.PENDING)
+    result: Mapped[str | None] = mapped_column(Text)
+    error_message: Mapped[str | None] = mapped_column(Text)
+    tokens_used: Mapped[int | None] = mapped_column()
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(UTC)
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(UTC),
+        onupdate=lambda: datetime.now(UTC),
+    )
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
 class JobStep(Base):
     __tablename__ = "jobs_steps"
 
-    id = Column(Integer, primary_key=True)
-    job_id = Column(Integer, ForeignKey("jobs.id"), nullable=False)
-    step_name = Column(Enum(StepName), nullable=False)
-    step_order = Column(Integer, nullable=False)
-    input = Column(Text, nullable=True)
-    output = Column(Text, nullable=True)
-    tokens_used = Column(Integer, nullable=True)
-    duration_ms = Column(Integer, nullable=True)
-    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
+    id: Mapped[int] = mapped_column(primary_key=True)
+    job_id: Mapped[int] = mapped_column(ForeignKey("jobs.id"))
+    step_name: Mapped[StepName] = mapped_column(Enum(StepName))
+    step_order: Mapped[int] = mapped_column()
+    input: Mapped[str | None] = mapped_column(Text)
+    output: Mapped[str | None] = mapped_column(Text)
+    tokens_used: Mapped[int | None] = mapped_column()
+    duration_ms: Mapped[int | None] = mapped_column()
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(UTC)
+    )
 
 
 class Subscription(Base):
     __tablename__ = "subscriptions"
 
-    user_id = Column(Integer, ForeignKey("users.id"), primary_key=True)
-    stripe_customer_id = Column(String, nullable=False, unique=True)
-    stripe_subscription_id = Column(String, nullable=False, unique=True)
-    plan = Column(Enum(Plan), nullable=False)
-    status = Column(Enum(SubscriptionStatus), nullable=False)
-    current_period_start = Column(DateTime(timezone=True), nullable=False)
-    current_period_end = Column(DateTime(timezone=True), nullable=False)
-    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
-    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC))
-    canceled_at = Column(DateTime(timezone=True), nullable=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), primary_key=True)
+    stripe_customer_id: Mapped[str] = mapped_column(String, unique=True)
+    stripe_subscription_id: Mapped[str] = mapped_column(String, unique=True)
+    plan: Mapped[Plan] = mapped_column(Enum(Plan))
+    status: Mapped[SubscriptionStatus] = mapped_column(Enum(SubscriptionStatus))
+    current_period_start: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    current_period_end: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(UTC)
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(UTC),
+        onupdate=lambda: datetime.now(UTC),
+    )
+    canceled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
 class Integration(Base):
     __tablename__ = "integrations"
 
-    id = Column(Integer, primary_key=True)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
-    type = Column(Enum(IntegrationType), nullable=False)
-    is_active = Column(Integer, default=1)
-    config = Column(JSONB, nullable=False)
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    type: Mapped[IntegrationType] = mapped_column(Enum(IntegrationType))
+    is_active: Mapped[int] = mapped_column(default=1)
+    config: Mapped[dict[str, Any]] = mapped_column(JSONB)

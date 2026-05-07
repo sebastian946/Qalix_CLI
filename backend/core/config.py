@@ -30,7 +30,7 @@ async def lifespan(app: FastAPI):
 
     try:
         redis_client = aioredis.from_url(settings.REDIS_URL, decode_responses=True)
-        await redis_client.ping()
+        await redis_client.ping()  # type: ignore[misc]
         logger.info("redis_connected")
     except Exception as e:
         logger.warning("redis_connection_failed", error=str(e))
@@ -54,7 +54,7 @@ from core.logger import configure_logging  # noqa: E402
 
 configure_logging(log_level=settings.LOG_LEVEL, environment=settings.ENVIRONMENT)
 
-llm = ChatAnthropic(
+llm = ChatAnthropic(  # type: ignore[call-arg]
     model_name="claude-haiku-4-5-20251001",
     api_key=settings.ANTHROPIC_API_KEY,  # type: ignore[arg-type]
     temperature=0,
