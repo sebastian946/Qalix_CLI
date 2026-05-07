@@ -6,8 +6,8 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.config import get_db, get_redis_service
-from services.redis_service import RedisService
 from services.jobs_services import JobService
+from services.redis_service import RedisService
 
 router = APIRouter()
 

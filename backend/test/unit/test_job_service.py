@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -18,7 +18,7 @@ def make_mock_job(
     error_message: str | None = None,
 ) -> Job:
     """Create a mock Job object."""
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     job = Job(
         id=job_id,
         user_id=user_id,

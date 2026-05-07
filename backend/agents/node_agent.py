@@ -1,10 +1,9 @@
 from typing import NotRequired, TypedDict, cast
 
+from langgraph.graph import END, StateGraph
 from pydantic import BaseModel
 
 from core.config import llm
-
-from langgraph.graph import StateGraph, END
 
 _SYSTEM_PROMPT_ANALYSIS = (
     "You are a QA expert. Analyze the provided code and identify: "

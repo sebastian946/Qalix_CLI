@@ -1,6 +1,6 @@
 import hashlib
-from datetime import datetime, timezone
-from typing import Optional, cast
+from datetime import UTC, datetime
+from typing import cast
 
 import structlog
 from fastapi import HTTPException
@@ -17,7 +17,7 @@ logger = structlog.get_logger()
 
 
 class JobService:
-    def __init__(self, db: AsyncSession, redis_service: Optional[RedisService] = None):
+    def __init__(self, db: AsyncSession, redis_service: RedisService | None = None):
         self.db = db
         self.redis_service = redis_service
 
@@ -62,7 +62,7 @@ class JobService:
             logger.info("cache_hit", job_id=job_id, code_hash=code_hash[:8])
             job.status = Status.COMPLETED
             job.result = cached_result
-            job.completed_at = datetime.now(timezone.utc)
+            job.completed_at = datetime.now(UTC)
             await self.db.commit()
             return
 
@@ -82,14 +82,14 @@ class JobService:
 
             job.status = Status.COMPLETED
             job.result = result
-            job.completed_at = datetime.now(timezone.utc)
+            job.completed_at = datetime.now(UTC)
             await self.db.commit()
 
         except Exception as e:
             logger.exception("agent_execution_failed", job_id=job_id, error=str(e))
             job.status = Status.FAILED
             job.error_message = str(e)
-            job.completed_at = datetime.now(timezone.utc)
+            job.completed_at = datetime.now(UTC)
             await self.db.commit()
 
     async def get_job(self, job_id: int, user_id: int) -> Job | None:
@@ -116,6 +116,6 @@ class JobService:
 
 # Dependency for FastAPI
 def get_job_service(
-    db: AsyncSession, redis_service: Optional[RedisService] = None
+    db: AsyncSession, redis_service: RedisService | None = None
 ) -> JobService:
     return JobService(db, redis_service)

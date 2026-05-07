@@ -4,8 +4,13 @@ from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.config import get_db, get_redis_service
-from schemas.schemas import MAX_CODE_SIZE, CreateJobRequest, CreateJobResponse, JobResponse
-from services.jobs_services import JobService, get_job_service
+from schemas.schemas import (
+    MAX_CODE_SIZE,
+    CreateJobRequest,
+    CreateJobResponse,
+    JobResponse,
+)
+from services.jobs_services import get_job_service
 from services.rate_limit_service import RateLimitService, get_rate_limit_service
 from services.redis_service import RedisService
 

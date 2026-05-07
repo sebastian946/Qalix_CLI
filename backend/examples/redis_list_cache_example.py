@@ -3,15 +3,14 @@ Ejemplo: Cómo cachear listas de datos con Redis
 """
 
 import json
-from typing import List
 
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.config import get_db, get_redis_service
-from services.redis_service import RedisService
-from services.jobs_services import JobService
 from schemas.schemas import JobResponse
+from services.jobs_services import JobService
+from services.redis_service import RedisService
 
 router = APIRouter()
 
@@ -23,7 +22,7 @@ async def get_user_jobs_cached(
     offset: int = 0,
     redis_service: RedisService = Depends(get_redis_service),
     db: AsyncSession = Depends(get_db),
-) -> List[JobResponse]:
+) -> list[JobResponse]:
     """
     Obtiene los jobs de un usuario con caché.
 

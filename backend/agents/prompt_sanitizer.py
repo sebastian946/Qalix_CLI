@@ -1,5 +1,6 @@
 import re
 
+
 class PromptSanitizer:
     DANGEROUS_PATTERNS = [
         r"import\s+os",

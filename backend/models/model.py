@@ -1,6 +1,7 @@
 import enum
-from datetime import datetime, timezone
-from sqlalchemy import Column, Integer, String, Enum, DateTime, Text, ForeignKey
+from datetime import UTC, datetime
+
+from sqlalchemy import Column, DateTime, Enum, ForeignKey, Integer, String, Text
 from sqlalchemy.dialects.postgresql import JSONB
 
 from core.config import Base
@@ -46,8 +47,8 @@ class User(Base):
     plan = Column(Enum(Plan), nullable=False, default=Plan.FREE)
     job_used_this_month = Column(Integer, default=0)
     month_reset_at = Column(DateTime(timezone=True), nullable=True)
-    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
-    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
+    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC))
 
 
 class Job(Base):
@@ -61,8 +62,8 @@ class Job(Base):
     result = Column(Text, nullable=True)
     error_message = Column(Text, nullable=True)
     tokens_used = Column(Integer, nullable=True)
-    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
-    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
+    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC))
     completed_at = Column(DateTime(timezone=True), nullable=True)
 
 
@@ -77,7 +78,7 @@ class JobStep(Base):
     output = Column(Text, nullable=True)
     tokens_used = Column(Integer, nullable=True)
     duration_ms = Column(Integer, nullable=True)
-    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
 
 
 class Subscription(Base):
@@ -90,8 +91,8 @@ class Subscription(Base):
     status = Column(Enum(SubscriptionStatus), nullable=False)
     current_period_start = Column(DateTime(timezone=True), nullable=False)
     current_period_end = Column(DateTime(timezone=True), nullable=False)
-    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
-    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
+    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC))
     canceled_at = Column(DateTime(timezone=True), nullable=True)
 
 

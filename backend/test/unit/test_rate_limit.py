@@ -10,7 +10,7 @@ Tests cover:
 - Remaining counter decrements
 """
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from unittest.mock import AsyncMock
 
 import pytest
@@ -36,7 +36,7 @@ def free_user():
         email="free@example.com",
         plan=Plan.FREE,
         job_used_this_month=0,
-        month_reset_at=datetime.now(timezone.utc) + timedelta(days=30),
+        month_reset_at=datetime.now(UTC) + timedelta(days=30),
     )
 
 
@@ -49,7 +49,7 @@ def pro_user():
         email="pro@example.com",
         plan=Plan.PRO,
         job_used_this_month=0,
-        month_reset_at=datetime.now(timezone.utc) + timedelta(days=30),
+        month_reset_at=datetime.now(UTC) + timedelta(days=30),
     )
 
 
@@ -171,7 +171,7 @@ async def test_response_headers_indicate_remaining(db_session, free_user):
 async def test_monthly_reset_after_30_days(db_session, free_user):
     """Counter should reset after 30 days."""
     # Set reset date to the past
-    free_user.month_reset_at = datetime.now(timezone.utc) - timedelta(days=1)
+    free_user.month_reset_at = datetime.now(UTC) - timedelta(days=1)
     free_user.job_used_this_month = 10  # Was at limit
     db_session.get.return_value = free_user
     service = RateLimitService(db_session)
@@ -183,7 +183,7 @@ async def test_monthly_reset_after_30_days(db_session, free_user):
     assert rate_info.used == 1
     assert rate_info.remaining == 9
     # Reset date should be ~30 days from now
-    assert free_user.month_reset_at > datetime.now(timezone.utc)
+    assert free_user.month_reset_at > datetime.now(UTC)
     assert db_session.commit.call_count == 2  # Once for reset, once for increment
 
 
@@ -195,11 +195,11 @@ async def test_reset_on_first_use(db_session, free_user):
     db_session.get.return_value = free_user
     service = RateLimitService(db_session)
 
-    rate_info = await service.check_and_increment(free_user.id)
+    await service.check_and_increment(free_user.id)
 
     assert free_user.job_used_this_month == 1
     assert free_user.month_reset_at is not None
-    assert free_user.month_reset_at > datetime.now(timezone.utc)
+    assert free_user.month_reset_at > datetime.now(UTC)
 
 
 @pytest.mark.asyncio

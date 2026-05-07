@@ -1,8 +1,7 @@
 import logging
-from typing import Any, Optional
+from typing import Any
 
 import redis.asyncio as aioredis
-
 
 logger = logging.getLogger(__name__)
 
@@ -11,11 +10,11 @@ logger = logging.getLogger(__name__)
 class RedisService:
     """Redis service with graceful degradation and error handling."""
 
-    def __init__(self, redis_client: Optional[aioredis.Redis] = None):
+    def __init__(self, redis_client: aioredis.Redis | None = None):
         self.client = redis_client
         self._available = redis_client is not None
 
-    async def get(self, key: str) -> Optional[str]:
+    async def get(self, key: str) -> str | None:
         """
         Get a value from Redis cache.
         Returns None if key doesn't exist or Redis is unavailable.
@@ -36,7 +35,7 @@ class RedisService:
         self,
         key: str,
         value: Any,
-        ttl: Optional[int] = None,
+        ttl: int | None = None,
     ) -> bool:
         """
         Set a value in Redis cache with optional TTL (in seconds).

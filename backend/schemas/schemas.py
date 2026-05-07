@@ -1,12 +1,18 @@
 import enum
 from datetime import datetime
-from typing import Optional, List
-from pydantic import BaseModel, ConfigDict, EmailStr, Field, PositiveInt, field_validator
+
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    EmailStr,
+    Field,
+    field_validator,
+)
+
+from agents.prompt_sanitizer import PromptSanitizer
+from models.model import Status
 
 MAX_CODE_SIZE = 100_000  # ~100KB in characters
-
-from models.model import Status
-from agents.prompt_sanitizer import PromptSanitizer
 
 _sanitizer = PromptSanitizer()
 
@@ -16,16 +22,16 @@ class CreateUserSchema(BaseModel):
     id: int
     clerk_id: str
     email: EmailStr
-    plan: Optional[str]
+    plan: str | None
     job_used_this_month: int
-    month_reset_at: Optional[datetime]
+    month_reset_at: datetime | None
     created_at: datetime
     updated_at: datetime
 
 class ResponseUserSchema(BaseModel):
     id: int
     email: EmailStr
-    plan: Optional[str]
+    plan: str | None
     created_at: datetime
     updated_at: datetime
 
@@ -46,12 +52,12 @@ class JobSchema(BaseModel):
     filename: str
     code: str
     status: Status
-    result: Optional[str]
-    error_message: Optional[str]
-    tokens_used: Optional[int]
+    result: str | None
+    error_message: str | None
+    tokens_used: int | None
     created_at: datetime
     updated_at: datetime
-    completed_at: Optional[datetime]
+    completed_at: datetime | None
 
 external_data_job = {
     "id": 1,
@@ -67,7 +73,7 @@ external_data_job = {
     "completed_at": None
 }
 
-class JobStatus(str, enum.Enum):
+class JobStatus(enum.StrEnum):
     PENDING = "pending"
     RUNNING = "running"
     COMPLETED = "completed"
@@ -87,12 +93,12 @@ class JobResponse(BaseModel):
     filename: str
     code: str
     status: JobStatus
-    result: Optional[str] = None
-    error_message: Optional[str] = None
-    tokens_used: Optional[int] = None
+    result: str | None = None
+    error_message: str | None = None
+    tokens_used: int | None = None
     created_at: datetime
     updated_at: datetime
-    completed_at: Optional[datetime] = None
+    completed_at: datetime | None = None
 
 
 class JobStepSchema(BaseModel):
@@ -100,10 +106,10 @@ class JobStepSchema(BaseModel):
     job_id: int
     step_name: str
     step_order: int
-    input: Optional[str]
-    output: Optional[str]
-    tokens_used: Optional[int]
-    duration_ms: Optional[int]
+    input: str | None
+    output: str | None
+    tokens_used: int | None
+    duration_ms: int | None
     created_at: datetime
 
 external_data_job_step = {
@@ -128,7 +134,7 @@ class SubscriptionSchema(BaseModel):
     current_period_end: datetime
     created_at: datetime
     updated_at: datetime
-    canceled_at: Optional[datetime]
+    canceled_at: datetime | None
 
 external_data_subscription = {
     "user_id": 1,

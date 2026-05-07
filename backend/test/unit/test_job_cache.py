@@ -7,7 +7,6 @@ from unittest.mock import AsyncMock, patch
 import pytest
 
 from models.model import Job, Status
-from schemas.schemas import CreateJobRequest
 from services.jobs_services import JobService
 from services.redis_service import RedisService
 

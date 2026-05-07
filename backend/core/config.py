@@ -1,5 +1,5 @@
+from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
-from typing import AsyncGenerator, Optional
 
 import redis.asyncio as aioredis
 import structlog
@@ -26,7 +26,7 @@ class Settings(BaseSettings):
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan with graceful degradation for Redis."""
-    redis_client: Optional[aioredis.Redis] = None
+    redis_client: aioredis.Redis | None = None
 
     try:
         redis_client = aioredis.from_url(settings.REDIS_URL, decode_responses=True)
@@ -51,6 +51,7 @@ async def lifespan(app: FastAPI):
 settings = Settings()  # type: ignore[call-arg]
 
 from core.logger import configure_logging  # noqa: E402
+
 configure_logging(log_level=settings.LOG_LEVEL, environment=settings.ENVIRONMENT)
 
 llm = ChatAnthropic(
@@ -93,11 +94,11 @@ async def get_redis_service(request: Request) -> RedisService:
     return request.app.state.redis_service
 
 
-async def get_redis(app: FastAPI) -> Optional[aioredis.Redis]:
+async def get_redis(app: FastAPI) -> aioredis.Redis | None:
     """Get raw Redis client from app state (for backward compatibility)."""
     return app.state.redis
 
 
 # Initialize a placeholder redis_client for backward compatibility
 # This will be set properly in the lifespan context
-redis_client: Optional[aioredis.Redis] = None
+redis_client: aioredis.Redis | None = None

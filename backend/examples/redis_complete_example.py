@@ -7,7 +7,6 @@ en tus endpoints de forma práctica y real.
 
 import json
 from datetime import datetime
-from typing import List, Optional
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -76,7 +75,7 @@ async def get_job_with_cache(
     if success:
         print(f"💾 Guardado en caché con TTL={ttl}s")
     else:
-        print(f"⚠️  Redis no disponible, no se guardó en caché")
+        print("⚠️  Redis no disponible, no se guardó en caché")
 
     return job_response
 
@@ -136,7 +135,7 @@ async def get_user_jobs_cached(
     offset: int = 0,
     redis_service: RedisService = Depends(get_redis_service),
     db: AsyncSession = Depends(get_db),
-) -> List[JobResponse]:
+) -> list[JobResponse]:
     """
     Cachear listas requiere:
     1. Incluir parámetros de paginación en la clave
@@ -259,7 +258,7 @@ async def create_job_rate_limited(
     rate_key = f"rate_limit:create_job:user:{user_id}"
     current_count = await redis_service.get(rate_key)
 
-    MAX_JOBS_PER_MINUTE = 10
+    max_jobs_per_minute = 10
 
     if current_count is None:
         # Primera petición en esta ventana
@@ -267,10 +266,10 @@ async def create_job_rate_limited(
     else:
         count = int(current_count)
 
-        if count >= MAX_JOBS_PER_MINUTE:
+        if count >= max_jobs_per_minute:
             raise HTTPException(
                 status_code=429,
-                detail=f"Rate limit exceeded. Max {MAX_JOBS_PER_MINUTE} jobs per minute.",
+                detail=f"Rate limit exceeded. Max {max_jobs_per_minute} jobs per minute.",
                 headers={"Retry-After": "60"},
             )
 

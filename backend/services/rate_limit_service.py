@@ -7,11 +7,9 @@ Implements monthly usage limits:
 """
 
 import logging
-from datetime import datetime, timezone
-from typing import Optional
+from datetime import UTC, datetime
 
 from fastapi import Depends, HTTPException
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.config import get_db
@@ -85,7 +83,7 @@ class RateLimitService:
                 limit=limit,
                 used=user.job_used_this_month,
                 remaining=0,
-                reset_at=user.month_reset_at or datetime.now(timezone.utc),
+                reset_at=user.month_reset_at or datetime.now(UTC),
             )
 
             raise HTTPException(
@@ -114,7 +112,7 @@ class RateLimitService:
             limit=limit,
             used=user.job_used_this_month,
             remaining=remaining - 1,  # Already incremented
-            reset_at=user.month_reset_at or datetime.now(timezone.utc),
+            reset_at=user.month_reset_at or datetime.now(UTC),
         )
 
     async def get_limit_info(self, user_id: int) -> RateLimitInfo:
@@ -137,7 +135,7 @@ class RateLimitService:
             limit=limit,
             used=user.job_used_this_month,
             remaining=remaining,
-            reset_at=user.month_reset_at or datetime.now(timezone.utc),
+            reset_at=user.month_reset_at or datetime.now(UTC),
         )
 
     async def _reset_if_needed(self, user: User) -> None:
@@ -146,7 +144,7 @@ class RateLimitService:
 
         Sets month_reset_at to 30 days from now on first use or after reset.
         """
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
 
         # If no reset date set, or reset date has passed
         if not user.month_reset_at or now >= user.month_reset_at:

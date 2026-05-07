@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -22,9 +22,9 @@ def make_mock_user(
     user.email = f"user{user_id}@example.com"
     user.plan = plan
     user.job_used_this_month = job_used_this_month
-    user.month_reset_at = datetime.now(timezone.utc) + timedelta(days=30)
-    user.created_at = datetime.now(timezone.utc)
-    user.updated_at = datetime.now(timezone.utc)
+    user.month_reset_at = datetime.now(UTC) + timedelta(days=30)
+    user.created_at = datetime.now(UTC)
+    user.updated_at = datetime.now(UTC)
     return user
 
 
@@ -34,7 +34,7 @@ def make_mock_job(
     status: Status = Status.PENDING,
     result: str | None = None,
 ) -> MagicMock:
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     job = MagicMock()
     job.id = job_id
     job.user_id = user_id
