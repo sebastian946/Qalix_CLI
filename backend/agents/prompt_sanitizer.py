@@ -12,7 +12,11 @@ class PromptSanitizer:
         r"DAN mode"
     ]
 
-    ALLOWED_EXTENSIONS = {".py", ".txt", ".md"}
+    ALLOWED_EXTENSIONS = {
+        ".py", ".js", ".ts", ".go", ".java", ".rb",
+        ".php", ".cs", ".cpp", ".rs", ".kt", ".swift",
+        ".txt", ".md",
+    }
 
     def is_safe(self, prompt: str) -> bool:
         for pattern in self.DANGEROUS_PATTERNS:

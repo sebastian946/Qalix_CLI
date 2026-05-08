@@ -6,16 +6,16 @@ Implements monthly usage limits:
 - Pro plan: 200 analyses per month
 """
 
-import logging
 from datetime import UTC, datetime
 
+import structlog
 from fastapi import Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.config import get_db
 from models.model import Plan, User
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger()
 
 # Plan limits (analyses per month)
 PLAN_LIMITS = {
@@ -75,8 +75,11 @@ class RateLimitService:
         # Check if limit exceeded
         if user.job_used_this_month >= limit:
             logger.warning(
-                f"Rate limit exceeded for user_id={user_id}, "
-                f"plan={user.plan.value}, used={user.job_used_this_month}/{limit}"
+                "rate_limit_exceeded",
+                user_id=user_id,
+                plan=user.plan.value,
+                used=user.job_used_this_month,
+                limit=limit,
             )
 
             rate_info = RateLimitInfo(
@@ -104,8 +107,11 @@ class RateLimitService:
         await self.db.refresh(user)
 
         logger.info(
-            f"Rate limit check passed for user_id={user_id}, "
-            f"plan={user.plan.value}, used={user.job_used_this_month}/{limit}"
+            "rate_limit_passed",
+            user_id=user_id,
+            plan=user.plan.value,
+            used=user.job_used_this_month,
+            limit=limit,
         )
 
         return RateLimitInfo(
@@ -149,8 +155,9 @@ class RateLimitService:
         # If no reset date set, or reset date has passed
         if not user.month_reset_at or now >= user.month_reset_at:
             logger.info(
-                f"Resetting monthly counter for user_id={user.id}, "
-                f"previous_count={user.job_used_this_month}"
+                "monthly_counter_reset",
+                user_id=user.id,
+                previous_count=user.job_used_this_month,
             )
 
             user.job_used_this_month = 0

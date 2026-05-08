@@ -1,3 +1,4 @@
+import os
 import time
 
 import structlog
@@ -10,16 +11,40 @@ logger = structlog.get_logger()
 _INPUT_COST_PER_1M = 0.80
 _OUTPUT_COST_PER_1M = 4.00
 
-_SYSTEM_PROMPT = (
-    "You are a QA expert and you generate unit tests using the language "
-    "and create pipelines for CD/CI"
-)
+# Maps file extension → (language name, test framework)
+_EXTENSION_MAP: dict[str, tuple[str, str]] = {
+    ".py":    ("Python",     "pytest"),
+    ".js":    ("JavaScript", "Jest"),
+    ".ts":    ("TypeScript", "Jest with ts-jest"),
+    ".go":    ("Go",         "the Go standard testing package (go test)"),
+    ".java":  ("Java",       "JUnit 5"),
+    ".rb":    ("Ruby",       "RSpec"),
+    ".php":   ("PHP",        "PHPUnit"),
+    ".cs":    ("C#",         "xUnit"),
+    ".cpp":   ("C++",        "Google Test (gtest)"),
+    ".rs":    ("Rust",       "the built-in Rust testing framework (cargo test)"),
+    ".kt":    ("Kotlin",     "JUnit 5 with Kotlin"),
+    ".swift": ("Swift",      "XCTest"),
+}
+
+
+def _build_system_prompt(language: str, framework: str) -> str:
+    return (
+        f"You are a QA expert specializing in {language}. "
+        f"Generate comprehensive unit tests using {framework}. "
+        f"Cover happy paths, edge cases, and error scenarios. "
+        f"Output only the test code, ready to use in a CD/CI pipeline."
+    )
 
 
 async def chat(code: str, filename: str) -> str:
+    ext = os.path.splitext(filename)[1].lower()
+    language, framework = _EXTENSION_MAP.get(ext, ("the detected programming language", "the standard testing framework"))
+    system_prompt = _build_system_prompt(language, framework)
+
     messages = [
-        ("system", _SYSTEM_PROMPT),
-        ("user", f"Generate a unit test for the following code:\n\n```{filename}\n{code}\n```"),
+        ("system", system_prompt),
+        ("user", f"Generate unit tests for the following {language} code:\n\n```{filename}\n{code}\n```"),
     ]
 
     start_time = time.perf_counter()
@@ -37,6 +62,8 @@ async def chat(code: str, filename: str) -> str:
     logger.info(
         "agent_execution_completed",
         filename=filename,
+        language=language,
+        framework=framework,
         tokens_input=input_tokens,
         tokens_output=output_tokens,
         tokens_total=input_tokens + output_tokens,

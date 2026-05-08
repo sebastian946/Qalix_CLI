@@ -1,0 +1,17 @@
+{
+  "name": "qalix-cli",
+  "version": "1.0.0",
+  "description": "CLI para generar tests con IA — Qalix",
+  "type": "module",
+  "bin": {
+    "qalix": "./bin/qalix.js"
+  },
+  "dependencies": {
+    "chalk": "^5.3.0",
+    "commander": "^12.1.0",
+    "ora": "^8.1.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
